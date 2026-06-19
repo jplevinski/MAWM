@@ -416,20 +416,125 @@ const releases = [
   { title: "Beautiful Bandit", explicit: false },
 ];
 
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function generateArt(canvas, title) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.height = 400;
+  const h = hashStr(title);
+
+  const palettes = [
+    ['#1a0a2e', '#16213e', '#0f3460', '#e94560'],
+    ['#0d1117', '#1b2838', '#c8a44e', '#f4a261'],
+    ['#1a1a2e', '#16213e', '#533483', '#e94560'],
+    ['#0b0c10', '#1f2833', '#45a29e', '#66fcf1'],
+    ['#2d1b69', '#462f7a', '#7c3aed', '#c084fc'],
+    ['#1c1917', '#44403c', '#a8a29e', '#d4a574'],
+    ['#0c0a09', '#292524', '#dc2626', '#f97316'],
+    ['#0f172a', '#1e293b', '#3b82f6', '#60a5fa'],
+    ['#14120e', '#2c2418', '#8b6914', '#daa520'],
+    ['#1a0000', '#3d0000', '#8b0000', '#ff4444'],
+  ];
+  const pal = palettes[h % palettes.length];
+
+  const grd = ctx.createLinearGradient(0, 0, w, w);
+  grd.addColorStop(0, pal[0]);
+  grd.addColorStop(0.5, pal[1]);
+  grd.addColorStop(1, pal[2]);
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, w, w);
+
+  ctx.globalAlpha = 0.12;
+  for (let i = 0; i < 5; i++) {
+    const x = (h * (i + 1) * 73) % w;
+    const y = (h * (i + 1) * 47) % w;
+    const r = 40 + (h * (i + 1)) % 120;
+    const cg = ctx.createRadialGradient(x, y, 0, x, y, r);
+    cg.addColorStop(0, pal[3]);
+    cg.addColorStop(1, 'transparent');
+    ctx.fillStyle = cg;
+    ctx.fillRect(0, 0, w, w);
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = pal[3];
+  ctx.globalAlpha = 0.06;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    const cx = (h * (i+3) * 89) % w;
+    const cy = (h * (i+3) * 61) % w;
+    ctx.arc(cx, cy, 60 + (h * (i+1)) % 80, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+
+  const words = title.toUpperCase().split(' ');
+  const fontSize = title.length > 20 ? 28 : title.length > 12 ? 34 : 42;
+  ctx.font = `700 ${fontSize}px Oswald, sans-serif`;
+  ctx.letterSpacing = '3px';
+
+  const lineHeight = fontSize * 1.2;
+  const lines = [];
+  let cur = '';
+  words.forEach(word => {
+    const test = cur ? cur + ' ' + word : word;
+    if (ctx.measureText(test).width > w * 0.8 && cur) {
+      lines.push(cur);
+      cur = word;
+    } else {
+      cur = test;
+    }
+  });
+  if (cur) lines.push(cur);
+
+  const totalH = lines.length * lineHeight;
+  const startY = (w - totalH) / 2 + fontSize;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, w / 2, startY + i * lineHeight);
+  });
+
+  ctx.font = '500 16px Inter, sans-serif';
+  ctx.fillStyle = pal[3];
+  ctx.globalAlpha = 0.8;
+  ctx.fillText('M.A.W.M.', w / 2, w - 30);
+  ctx.restore();
+}
+
 const grid = document.getElementById('releases-grid');
 releases.forEach(r => {
   const card = document.createElement('div');
   card.className = 'release-card';
   const badge = r.explicit ? '<span class="badge">E</span>' : '';
-  const initials = r.title.split(' ').map(w => w[0]).join('').substring(0, 3).toUpperCase();
-  card.innerHTML = `
-    <div class="art">${initials}</div>
-    <div class="info">
-      <div class="title">${r.title}${badge}</div>
-      <div class="artist">MAWM</div>
-    </div>
-  `;
+
+  const canvas = document.createElement('canvas');
+  canvas.style.width = '100%';
+  canvas.style.display = 'block';
+  canvas.style.aspectRatio = '1';
+
+  const artDiv = document.createElement('div');
+  artDiv.className = 'art';
+  artDiv.style.padding = '0';
+  artDiv.appendChild(canvas);
+
+  card.innerHTML = '';
+  card.appendChild(artDiv);
+  const info = document.createElement('div');
+  info.className = 'info';
+  info.innerHTML = `<div class="title">${r.title}${badge}</div><div class="artist">MAWM</div>`;
+  card.appendChild(info);
+
   grid.appendChild(card);
+  generateArt(canvas, r.title);
 });
 </script>
 
